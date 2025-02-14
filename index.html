@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Continuous Bluetooth Scan</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #status { margin-bottom: 20px; }
+    .device { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Continuous Bluetooth Scan for Mobile</h1>
+  <button id="startScanBtn">Start Continuous Scan</button>
+  <div id="status"></div>
+  <div id="deviceList"></div>
+
+  <script>
+    // Object to store discovered devices by their unique id.
+    let devices = {};
+    const statusDiv = document.getElementById('status');
+    const deviceListDiv = document.getElementById('deviceList');
+    const startScanBtn = document.getElementById('startScanBtn');
+
+    // Function to render the list of devices
+    function renderDevices() {
+      deviceListDiv.innerHTML = '';
+      for (const key in devices) {
+        const device = devices[key];
+        const div = document.createElement('div');
+        div.className = 'device';
+        div.innerHTML = `<strong>${device.name}</strong><br>
+                         ID: ${device.id}<br>
+                         RSSI: ${device.rssi}<br>
+                         Last seen: ${device.lastSeen}`;
+        deviceListDiv.appendChild(div);
+      }
+    }
+
+    // Start scanning when the button is clicked.
+    startScanBtn.addEventListener('click', async () => {
+      // Check if the Web Bluetooth API is available.
+      if (!navigator.bluetooth) {
+        statusDiv.textContent = 'Web Bluetooth API is not available in this browser.';
+        return;
+      }
+
+      try {
+        // Request a continuous scan for all advertisements.
+        // Note: keepRepeatedDevices ensures that devices are reported every time an advertisement is received.
+        const scan = await navigator.bluetooth.requestLEScan({
+          acceptAllAdvertisements: true,
+          keepRepeatedDevices: true
+        });
+        
+        statusDiv.textContent = 'Scanning for BLE advertisements...';
+
+        // Listen for advertisement events.
+        navigator.bluetooth.addEventListener('advertisementreceived', event => {
+          // Use the device id as a unique key.
+          const deviceId = event.device.id;
+          devices[deviceId] = {
+            name: event.device.name || 'Unknown Device',
+            id: deviceId,
+            rssi: event.rssi,
+            lastSeen: new Date().toLocaleTimeString()
+          };
+          renderDevices();
+        });
+
+        // Optionally, you can stop scanning after a certain period:
+        // setTimeout(() => {
+        //   scan.stop();
+        //   statusDiv.textContent = 'Scan stopped.';
+        // }, 60000); // Stops after 60 seconds
+
+      } catch (error) {
+        console.error('Error starting scan:', error);
+        statusDiv.textContent = 'Error: ' + error;
+      }
+    });
+  </script>
+</body>
+</html>
